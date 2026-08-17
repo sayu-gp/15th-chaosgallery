@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>panbiyori. | パン好きのための相棒アプリ</title>
+    <meta name="description" content="パン好きのための相棒アプリ">
+    <link rel="stylesheet" href="style.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- HEIC Conversion Library (Better compatibility) -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.3/dist/heic2any.min.js"></script>
+</head>
+
+<body>
+    <div id="device-frame">
+    <!-- Status Bar -->
+    <div id="phone-status-bar">
+        <span id="phone-time">9:41</span>
+        <div class="phone-status-icons">
+            <i class="fa-solid fa-signal"></i>
+            <i class="fa-solid fa-wifi"></i>
+            <i class="fa-solid fa-battery-full"></i>
+        </div>
+    </div>
+    <!-- Splash Screen -->
+    <div id="splash">
+        <div class="splash-content">
+            <div class="splash-bread-wrap">
+                <svg class="splash-bread-svg" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+                    <!-- shadow -->
+                    <ellipse cx="60" cy="75" rx="42" ry="5" fill="#DCC7B1" opacity="0.5" />
+                    <!-- bread body base -->
+                    <rect x="14" y="44" width="92" height="26" rx="13" fill="#C8916A" />
+                    <!-- bread dome -->
+                    <path d="M14 52 C14 22 106 22 106 52" fill="#E8C08A" />
+                    <!-- highlight -->
+                    <path d="M26 38 C40 26 60 23 74 27" stroke="#F5DDB5" stroke-width="3" fill="none"
+                        stroke-linecap="round" opacity="0.7" />
+                    <!-- score marks -->
+                    <path d="M42 40 C44 30 46 30 47 40" stroke="#A86A38" stroke-width="2.2" fill="none"
+                        stroke-linecap="round" />
+                    <path d="M56 36 C58 26 60 26 61 36" stroke="#A86A38" stroke-width="2.2" fill="none"
+                        stroke-linecap="round" />
+                    <path d="M70 40 C72 30 74 30 75 40" stroke="#A86A38" stroke-width="2.2" fill="none"
+                        stroke-linecap="round" />
+                </svg>
+            </div>
+            <div class="splash-divider"></div>
+            <div class="splash-logo">panbiyori.</div>
+            <div class="splash-sub">BAKERY COMPANION</div>
+        </div>
+    </div>
+
+    <!-- Background Decorations -->
+    <div class="bg-decoration"
+        style="top: 10%; left: -20px; width: 100px; height: 100px; border: 2px solid var(--secondary-color); border-radius: 50%;">
+    </div>
+    <div class="bg-decoration"
+        style="top: 40%; right: -30px; width: 150px; height: 150px; background: var(--secondary-color); border-radius: 50%; opacity: 0.05;">
+    </div>
+    <div class="bg-decoration"
+        style="top: 70%; left: -40px; width: 120px; height: 120px; border: 1px dashed var(--secondary-color); border-radius: 50%;">
+    </div>
+
+    <div id="device-scroll">
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <span class="logo-sub">BAKERY COMPANION</span>
+                <div class="logo">panbiyori.</div>
+            </div>
+        </header>
+
+        <!-- The Home Section is now the Notebook Section -->
+
+
+        <!-- Meguri Section -->
+        <section id="explore">
+            <h2 class="section-title">MEGURI</h2>
+
+            <div class="view-toggle" style="display: none;">
+                <button class="view-toggle-btn" id="btn-list-view" onclick="app.setExploreView('list')"></button>
+                <button class="view-toggle-btn" id="btn-map-view" onclick="app.setExploreView('map')"></button>
+                <button class="view-toggle-btn active" id="btn-meguri-view" onclick="app.setExploreView('meguri')">
+                    <i class="fa-solid fa-route"></i> MEGURI
+                </button>
+            </div>
+
+            <!-- List View (Hidden) -->
+            <div id="explore-list-view" style="display: none;">
+                <div id="explore-list"></div>
+            </div>
+
+            <!-- Timeline View -->
+            <div id="explore-timeline-view" style="display: none;">
+                <div style="padding: 12px 16px; display: flex; align-items: center; gap: 12px; background: white; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10;">
+                    <button class="secondary-btn mini" onclick="app.setExploreView('meguri')" style="margin: 0; padding: 4px 8px; width: auto;"><i class="fa-solid fa-chevron-left" style="margin: 0;"></i></button>
+                    <span id="timeline-tour-title" style="font-weight: 700; font-size: 0.85rem; color: var(--primary-color); letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                </div>
+                <div id="timeline-container" class="timeline-container" style="padding: 32px 24px;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Meguri View -->
+            <div id="explore-meguri-view">
+                <div class="view-toggle" style="margin-bottom: 12px;">
+                    <button class="view-toggle-btn active" id="meguri-filter-visited" onclick="app.setMeguriFilter('visited')">VISITED</button>
+                    <button class="view-toggle-btn" id="meguri-filter-plan" onclick="app.setMeguriFilter('plan')">PLAN</button>
+                </div>
+                <div class="summary-container" id="meguri-summary" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="summary-item"><span class="summary-val" id="meguri-count">0</span><span
+                            class="summary-label">MEGURI</span></div>
+                    <div class="summary-item"><span class="summary-val" id="meguri-shops">0</span><span
+                            class="summary-label">STORES</span></div>
+                    <div class="summary-item"><span class="summary-val" id="meguri-avg">0.0</span><span
+                            class="summary-label">AVG. STORES</span></div>
+                </div>
+                <div id="meguri-list" class="meguri-list">
+                    <!-- Rendered by JS -->
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); text-align: center; margin-top: 24px;">NOTEまたはWISHからツアーを作成できます</p>
+            </div>
+        </section>
+
+        <!-- Wish List Section -->
+        <section id="mylist">
+            <h2 class="section-title">WISH LIST</h2>
+            
+            <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                <button id="btn-create-meguri-wish" class="primary-btn mini" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="app.startMeguriSelection()">
+                    <i class="fa-solid fa-route"></i> MEGURI PLAN
+                </button>
+                <button class="primary-btn mini" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="app.showCustomStoreForm()">
+                    <i class="fa-solid fa-plus"></i> ADD WISH
+                </button>
+            </div>
+            
+            <div class="filter-tabs">
+                <button class="tab-btn active" onclick="app.filterMyList('ALL')">ALL</button>
+                <button class="tab-btn" onclick="app.filterMyList('MUST')">MUST</button>
+                <button class="tab-btn" onclick="app.filterMyList('SOON')">SOON</button>
+                <button class="tab-btn" onclick="app.filterMyList('MAYBE')">SOMEDAY</button>
+            </div>
+            <div id="saved-list">
+                <!-- Rendered by JS -->
+            </div>
+        </section>
+
+        <!-- Notebook Section -->
+        <section id="notebook" class="active">
+            <div class="notebook-header">
+                <h2 class="section-title">NOTEBOOK</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button class="primary-btn mini" id="btn-create-meguri"
+                        onclick="app.startMeguriSelection()">MEGURI</button>
+                    <button class="primary-btn mini" onclick="app.showRecordForm()">+ RECORD</button>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="summary-container">
+                <div class="summary-item"><span class="summary-val" id="stats-total">0</span><span
+                        class="summary-label">PAN</span></div>
+                <div class="summary-item"><span class="summary-val" id="stats-visits">0</span><span
+                        class="summary-label">VISITS</span></div>
+                <div class="summary-item"><span class="summary-val" id="stats-shops">0</span><span
+                        class="summary-label">STORES</span></div>
+            </div>
+
+            <div class="view-toggle" style="margin-bottom: 24px;">
+                <button class="view-toggle-btn active" id="btn-grid-view"
+                    onclick="app.setNotebookView('grid')">GRID</button>
+                <button class="view-toggle-btn" id="btn-sticker-view"
+                    onclick="app.setNotebookView('sticker')">STICKER</button>
+                <button class="view-toggle-btn" id="btn-google-map-view"
+                    onclick="app.setNotebookView('map')">MAP</button>
+            </div>
+
+            <!-- Bread Stack Visualization -->
+            <div class="bread-stack-viz">
+                <div class="bread-stack-stage" id="bread-stack-stage"></div>
+                <div class="bread-stack-info">
+                    <span class="bread-stack-count" id="bread-stack-count">0</span>
+                    <span class="bread-stack-msg" id="bread-stack-msg">さあ、記録をはじめよう</span>
+                </div>
+            </div>
+
+            <!-- Record Modal Overlay -->
+            <div id="record-modal" class="modal-overlay hidden">
+                <div id="record-form" class="search-box mini">
+                    <h3 id="form-title" style="margin-bottom: 24px; text-align: center; font-size: 1.2rem;">NEW ENTRY
+                    </h3>
+                    <input type="hidden" id="record-id">
+
+                    <div class="bakery-form-section">
+                        <h4 class="form-section-title">BAKERY INFO</h4>
+                        <!-- Bakery Image -->
+                        <div class="form-group" style="text-align: center;">
+                            <div id="bakery-image-preview" class="image-upload-preview mini">
+                                <i class="fa-solid fa-store" style="font-size: 1.5rem; color: #DDD;"></i>
+                                <p style="font-size: 0.6rem; color: #AAA; margin-top: 4px;">BAKERY PHOTO</p>
+                            </div>
+                            <input type="file" id="bakery-image-input" accept="image/*" style="display: none;"
+                                onchange="app.handleBakeryImage(event)">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="group-label">STORE NAME</label>
+                            <input type="text" id="record-shop" placeholder="Bakery name">
+                        </div>
+                        <div class="form-group">
+                            <label class="group-label">PLACE / ADDRESS</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="record-address" placeholder="住所やGoogleマップのリンク">
+                                <button class="secondary-btn mini" style="width: auto; padding: 0 12px;"
+                                    onclick="window.open('https://www.google.com/maps', '_blank')"><i
+                                        class="fa-solid fa-location-dot"></i></button>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label class="group-label">DATE / 日付</label>
+                                <input type="date" id="record-date">
+                            </div>
+                            <div class="form-group">
+                                <label class="group-label">TIME / 訪問時間</label>
+                                <input type="time" id="record-time">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="breads-form-section">
+                        <h4 class="form-section-title">BREADS</h4>
+                        <div id="breads-list-container">
+                            <!-- Bread items added here -->
+                        </div>
+                        <button class="secondary-btn mini" style="width: 100%; margin-top: 12px; border-style: dashed;"
+                            onclick="app.addBreadEntry()">
+                            <i class="fa-solid fa-plus"></i> ADD BREAD
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label class="group-label">COMMENT</label>
+                        <textarea id="record-comment" rows="3" placeholder="How was the visit?"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="primary-btn" onclick="app.saveRecord()">SAVE NOTEBOOK</button>
+                        <button class="secondary-btn" onclick="app.hideRecordForm()">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticker Stage (Hidden by default) -->
+            <div id="sticker-view-container" style="display: none;">
+                <div class="sticker-stage" id="sticker-stage"></div>
+                <p style="text-align: center; font-size: 0.65rem; color: var(--text-muted); margin-bottom: 24px;">
+                    ステッカーを動かして並べよう</p>
+            </div>
+
+            <!-- Grid View -->
+            <div id="grid-view-container">
+                <div id="records-container" class="museum-grid">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Map View (Dashboard) -->
+            <div id="google-map-view-container" style="display: none;">
+                <div
+                    style="background: white; border-radius: var(--radius); border: 2px solid var(--border-color); padding: 40px 24px; text-align: center; box-shadow: var(--shadow);">
+                    <div style="font-size: 3.5rem; color: #4285F4; margin-bottom: 20px;">
+                        <i class="fa-brands fa-google"></i>
+                    </div>
+                    <h3 style="margin-bottom: 12px; font-weight: 800;">Google Maps 連携</h3>
+                    <p
+                        style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.8; padding: 0 10px;">
+                        ブラウザでGoogleにログインしている場合、<br>
+                        普段お使いのGoogleマップ（保存済みの場所やマイプレイス）を<br>
+                        安全に別ウィンドウで表示して連携できます。
+                    </p>
+                    <button class="primary-btn" style="width: auto; padding: 14px 40px; margin: 0 auto;"
+                        onclick="window.open('https://www.google.com/maps', '_blank')">
+                        <i class="fa-solid fa-up-right-from-square" style="margin-right: 8px;"></i> Googleマップを開く
+                    </button>
+                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F5F5F5;">
+                        <p style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 16px;">※
+                            Googleのセキュリティ保護により、地図の全機能は別ウィンドウでの表示となります</p>
+                        <a href="https://www.google.com/maps/d/" target="_blank"
+                            style="font-size: 0.7rem; color: var(--primary-color); text-decoration: none; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-map-location-dot"></i> 自分のマイマップを編集する
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Custom Store Modal (MY LIST) -->
+        <div id="custom-store-modal" class="modal-overlay hidden">
+            <div class="search-box" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h2 id="custom-store-modal-title">ADD TO MY LIST</h2>
+                    <button class="close-btn" onclick="document.getElementById('custom-store-modal').classList.add('hidden')">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <input type="hidden" id="custom-store-id">
+                    <div class="form-group">
+                        <label class="group-label">BAKERY NAME / 店名</label>
+                        <input type="text" id="custom-store-name" placeholder="お店の名前">
+                    </div>
+                    <div class="form-group">
+                        <label class="group-label">AREA / エリア</label>
+                        <input type="text" id="custom-store-area" placeholder="例：世田谷区、代々木上原">
+                    </div>
+                    <div class="form-group">
+                        <label class="group-label">BREAD I WANT / 食べたいパン</label>
+                        <input type="text" id="custom-store-bread" placeholder="例：クロワッサン、ミルクフランス">
+                    </div>
+                    <div class="form-group">
+                        <label class="group-label">WISH LEVEL / 行きたい度</label>
+                        <div class="wish-level-selector" style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button class="level-btn" onclick="app.setWishLevel('MUST')" data-val="MUST">MUST GO</button>
+                            <button class="level-btn" onclick="app.setWishLevel('SOON')" data-val="SOON">SOON</button>
+                            <button class="level-btn" onclick="app.setWishLevel('MAYBE')" data-val="MAYBE">SOMEDAY</button>
+                        </div>
+                        <input type="hidden" id="custom-store-level" value="SOON">
+                    </div>
+                    <button class="primary-btn" onclick="app.saveCustomStore()" style="margin-top: 24px; width: 100%;">SAVE TO LIST</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tour Modal -->
+        <div id="tour-modal" class="modal-overlay hidden">
+            <div class="search-box" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2 id="tour-modal-title">MEGURI</h2>
+                    <button class="close-btn" onclick="document.getElementById('tour-modal').classList.add('hidden')">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <input type="hidden" id="editing-meguri-id">
+                    <div class="form-group">
+                        <label class="group-label">MEGURI TITLE / ツアー名</label>
+                        <input type="text" id="tour-title-input" placeholder="例：代々木上原パン巡り">
+                    </div>
+                    <button id="tour-save-btn" class="primary-btn" onclick="try { app.completeMeguriSave(); } catch(e) { console.error(e); alert(e.message); }" style="margin-top: 16px; width: 100%;">REGISTRATION</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirm Modal -->
+        <div id="delete-modal" class="modal-overlay hidden">
+            <div class="search-box" style="max-width: 350px; text-align: center;">
+                <div class="modal-body" style="padding: 32px 24px;">
+                    <i class="fa-solid fa-circle-exclamation" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 16px; display: block;"></i>
+                    <h3 style="margin-bottom: 8px;">DELETE MEGURI?</h3>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 24px;">このツアーを削除してもよろしいですか？</p>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="secondary-btn" onclick="document.getElementById('delete-modal').classList.add('hidden')" style="flex: 1;">CANCEL</button>
+                        <button class="primary-btn" id="confirm-delete-btn" style="flex: 1; background: #C0392B;">DELETE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Bar -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="app.switchView('notebook')">
+                <i class="fa-solid fa-book-open"></i>
+                <span>NOTE</span>
+            </div>
+            <div class="nav-item" onclick="app.switchView('explore')">
+                <i class="fa-solid fa-route"></i>
+                <span>MEGURI</span>
+            </div>
+            <div class="nav-item" onclick="app.switchView('mylist')">
+                <i class="fa-solid fa-bookmark"></i>
+                <span>WISH</span>
+            </div>
+        </nav>
+    </div>
+    </div><!-- /#device-scroll -->
+
+    <!-- Time Picker Modal -->
+    <div id="time-modal" class="modal-overlay hidden">
+        <div class="search-box" style="max-width: 300px; text-align: center;">
+            <div class="modal-body" style="padding: 32px 24px;">
+                <h3 style="margin-bottom: 16px;">PLAN TIME</h3>
+                <p id="time-modal-shop-name" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 20px;"></p>
+                <div class="form-group">
+                    <input type="time" id="time-modal-input" style="font-size: 1.5rem; text-align: center; border: 2px solid var(--primary-color); border-radius: 12px; padding: 12px;">
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="secondary-btn" onclick="document.getElementById('time-modal').classList.add('hidden')" style="flex: 1;">CANCEL</button>
+                    <button class="primary-btn" onclick="app.savePlannedTime()" style="flex: 1;">SAVE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selection Bar for Meguri -->
+    <div id="selection-bar" class="selection-bar">
+        <div style="flex: 1;">
+            <span id="selected-count" style="font-size: 1.2rem; font-weight: 700;">0</span>
+            <span style="font-size: 0.6rem; font-weight: 700; margin-left: 4px; opacity: 0.8;">SELECTED</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="secondary-btn mini" style="width: auto; padding: 8px 16px; font-size: 0.65rem; color: white !important; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
+                onclick="app.cancelMeguriSelection()">CANCEL</button>
+            <button class="primary-btn mini" style="background: white; color: var(--primary-color); padding: 8px 16px; width: auto; font-weight: 800;"
+                onclick="app.confirmMeguri()">MEGURI</button>
+        </div>
+    </div>
+
+    <!-- Map Bakery Sheet -->
+    <div id="map-sheet" class="map-sheet">
+        <div id="map-sheet-content"></div>
+    </div>
+
+    <!-- FAB: WAITING? -->
+    <div id="fab-backdrop" class="fab-backdrop hidden"></div>
+    <div class="fab-popup hidden" id="fab-popup">
+        <button class="fab-popup-item" onclick="fabMenu.open('knowledge')">
+            <i class="fa-solid fa-book-open"></i> BREAD KNOWLEDGE
+        </button>
+        <button class="fab-popup-item" onclick="fabMenu.open('games')">
+            <i class="fa-solid fa-gamepad"></i> MINI GAMES
+        </button>
+    </div>
+    <button class="fab-btn" id="fab-btn" onclick="fabMenu.toggle()">
+        <i class="fa-solid fa-hourglass-half"></i> WAITING?
+    </button>
+
+    <!-- Knowledge Modal -->
+    <div id="modal-knowledge" class="fullscreen-modal hidden">
+        <div class="modal-header">
+            <button class="modal-back" onclick="knowledgeModal.close()">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <span class="modal-title">BREAD KNOWLEDGE</span>
+            <button class="modal-close" onclick="knowledgeModal.close()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="knowledge-tabs" id="knowledge-tabs">
+            <button class="k-tab active" data-cat="world">世界</button>
+            <button class="k-tab" data-cat="method">製法</button>
+            <button class="k-tab" data-cat="material">素材</button>
+            <button class="k-tab" data-cat="trivia">雑学</button>
+            <button class="k-tab" data-cat="quiz" style="color: #E67E22; font-weight: 900;">QUIZ</button>
+        </div>
+
+        <div class="knowledge-content-wrap" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+            <!-- Normal card view -->
+            <div id="knowledge-card-view" class="knowledge-card-area">
+                <div class="k-card" id="k-card">
+                    <div class="k-card-icon" id="k-icon"></div>
+                    <p class="k-card-title" id="k-title"></p>
+                    <p class="k-card-subtitle" id="k-subtitle"></p>
+                    <p class="k-card-text" id="k-text"></p>
+                </div>
+                <div class="k-nav">
+                    <button class="k-nav-btn" onclick="knowledgeModal.prev()"><i
+                            class="fa-solid fa-chevron-left"></i></button>
+                    <span id="k-counter" class="k-counter">1 / 5</span>
+                    <button class="k-nav-btn" onclick="knowledgeModal.next()"><i
+                            class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Quiz view -->
+            <div id="knowledge-quiz-view" class="quiz-area hidden">
+                <div class="quiz-header">
+                    <span class="quiz-progress" id="quiz-progress">Q 1 / 5</span>
+                    <span class="quiz-score-badge"><i class="fa-solid fa-star" style="color:#F1C40F"></i> <span id="quiz-score">0</span>pt</span>
+                </div>
+                <div class="quiz-card" id="quiz-card">
+                    <p class="quiz-question" id="quiz-question"></p>
+                </div>
+                <div class="quiz-choices" id="quiz-choices"></div>
+                <div class="quiz-feedback hidden" id="quiz-feedback">
+                    <div class="quiz-feedback-inner" id="quiz-feedback-inner"></div>
+                    <p class="quiz-explain" id="quiz-explain"></p>
+                    <button class="primary-btn" id="quiz-next-btn" onclick="knowledgeModal.quizNext()" style="margin-top:20px; width:100%;">次の問題へ</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="knowledge-footer" style="padding: 16px 24px; display: flex; justify-content: center; background: var(--bg-color); flex-shrink: 0; border-top: 1px solid rgba(0,0,0,0.05);">
+            <button class="hub-home-btn" onclick="knowledgeModal.close()">
+                <i class="fa-solid fa-house"></i> ホームに戻る
+            </button>
+        </div>
+    </div>
+
+    <!-- Games Modal -->
+    <div id="modal-games" class="fullscreen-modal hidden">
+        <div class="modal-header">
+            <button class="modal-back hidden" id="games-back" onclick="gamesModal.backToHub()">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <span class="modal-title" id="games-title">MINI GAMES</span>
+            <button class="modal-close" onclick="gamesModal.close()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Hub -->
+        <div id="games-hub" class="games-hub">
+            <div class="hub-stats-bar">
+                <div class="stat-pill"><i class="fa-solid fa-coins"></i> <span id="hub-coins">0</span></div>
+                <div class="stat-pill accent"><i class="fa-solid fa-award"></i> <span id="hub-badges">0</span></div>
+            </div>
+            <p class="games-hub-lead" style="margin-top: 8px;">待ち時間にどうぞ</p>
+            <button class="game-choice-btn" onclick="gamesModal.show('run')">
+                <span class="game-choice-icon"><i class="fa-solid fa-person-running"></i></span>
+                <span class="game-choice-name">RUN PAN !</span>
+                <span class="game-choice-desc">障害物をよけて走り続けろ</span>
+            </button>
+            <button class="game-choice-btn" onclick="gamesModal.show('bake')">
+                <span class="game-choice-icon"><i class="fa-solid fa-bread-slice"></i></span>
+                <span class="game-choice-name">BAKE PAN !</span>
+                <span class="game-choice-desc">こねて・成形して・焼き上げろ</span>
+            </button>
+            <button class="hub-home-btn" onclick="gamesModal.close()">
+                <i class="fa-solid fa-house"></i> ホームに戻る
+            </button>
+        </div>
+
+        <!-- Run Pan! -->
+        <div id="screen-run" class="game-screen hidden">
+            <div class="run-stats-rich">
+                <div class="run-stat-box">
+                    <span class="label">BEST</span>
+                    <span id="run-high-score">0</span>
+                </div>
+                <div class="run-stat-box accent">
+                    <span class="label">SCORE</span>
+                    <span id="run-score">0</span>
+                </div>
+            </div>
+
+            <div class="run-canvas-container">
+                <canvas id="run-canvas"></canvas>
+                <div id="run-overlay" class="run-overlay-rich">
+                    <div id="run-start-ui">
+                        <i class="fa-solid fa-person-running runner-anim"></i>
+                        <p class="run-title">READY?</p>
+                        <button class="primary-btn rich-btn" id="run-start-btn">START DASH!</button>
+                        <button class="hub-home-btn" onclick="gamesModal.backToHub()" style="margin-top: 10px;">
+                            <i class="fa-solid fa-arrow-left"></i> GAME HUB
+                        </button>
+                    </div>
+                    <div id="run-over-ui" class="hidden">
+                        <p class="run-title">GAME OVER</p>
+                        <div class="run-result-card">
+                            <div class="res-item">
+                                <span>DISTANCE</span>
+                                <span id="run-final-score" class="val">0</span>
+                            </div>
+                            <div class="res-item accent">
+                                <span>REWARD</span>
+                                <span><i class="fa-solid fa-coins"></i> +<span id="run-earned-coins">0</span></span>
+                            </div>
+                        </div>
+                        <button class="primary-btn rich-btn" onclick="runPan.reset()">TRY AGAIN</button>
+                        <button class="secondary-btn rich-btn-outline" onclick="gamesModal.backToHub()">QUIT</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="run-controls">
+                <button class="run-jump-btn" id="run-tap-btn">
+                    <i class="fa-solid fa-chevron-up"></i>
+                    <span>JUMP</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bake Pan! -->
+        <div id="screen-bake" class="game-screen hidden">
+            <!-- New: Level Selection & Stats -->
+            <div id="bake-setup" class="bake-step">
+                <div class="game-hero">
+                    <i class="fa-solid fa-fire-burner" style="font-size: 3.5rem; color: var(--primary-color); margin-bottom: 16px;"></i>
+                    <p class="bake-step-title" style="font-size: 2rem; margin-bottom: 8px;">BAKE PAN!</p>
+                    <p style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; letter-spacing: 2px;">THE ARTISAN CHALLENGE</p>
+                </div>
+                
+                <div class="game-stats-container">
+                    <div class="game-stat-card">
+                        <i class="fa-solid fa-coins"></i>
+                        <div class="val" id="bake-coins">0</div>
+                        <div class="lbl">COINS</div>
+                    </div>
+                    <div class="game-stat-card accent">
+                        <i class="fa-solid fa-award"></i>
+                        <div class="val" id="bake-badges">0</div>
+                        <div class="lbl">BADGES</div>
+                    </div>
+                </div>
+                
+                <div class="level-selector">
+                    <button class="level-btn-rich beginner" onclick="bakePan.selectLevel('beginner')">
+                        <div class="lvl-icon"><i class="fa-solid fa-seedling"></i></div>
+                        <div class="lvl-info">
+                            <span class="lvl-label">BEGINNER</span>
+                            <span class="lvl-desc">ゆっくり丁寧に。まずはここから！</span>
+                        </div>
+                    </button>
+                    <button class="level-btn-rich intermediate" onclick="bakePan.selectLevel('intermediate')">
+                        <div class="lvl-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+                        <div class="lvl-info">
+                            <span class="lvl-label">INTERMEDIATE</span>
+                            <span class="lvl-desc">標準的なスピード。職人への第一歩。</span>
+                        </div>
+                    </button>
+                    <button class="level-btn-rich advanced" onclick="bakePan.selectLevel('advanced')">
+                        <div class="lvl-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <div class="lvl-info">
+                            <span class="lvl-label">ADVANCED</span>
+                            <span class="lvl-desc">超高速！プロの技術が試される。</span>
+                        </div>
+                    </button>
+                </div>
+
+                <button class="hub-home-btn" onclick="gamesModal.backToHub()" style="margin-top: 8px;">
+                    <i class="fa-solid fa-arrow-left"></i> GAME HUB
+                </button>
+            </div>
+
+            <div id="bake-step-1" class="bake-step hidden">
+                <div class="step-header">
+                    <p class="bake-step-num">STEP 1 / 3</p>
+                    <p class="bake-step-title">KNEAD</p>
+                </div>
+                <div id="bake-dough-zone" class="bake-dough-zone-rich">
+                    <div id="bake-dough" class="bake-dough"></div>
+                    <div class="knead-guide">グリグリこねて！</div>
+                </div>
+                <div class="bake-bar-wrap">
+                    <div class="bake-bar">
+                        <div id="knead-fill" class="bake-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bake-step-2" class="bake-step hidden">
+                <div class="step-header">
+                    <p class="bake-step-num">STEP 2 / 3</p>
+                    <p class="bake-step-title">SHAPE</p>
+                </div>
+                <div id="bake-shape-zone" class="bake-shape-zone-rich" onclick="bakePan.tapShape(event)">
+                    <div id="bake-shape" class="bake-shape"></div>
+                    <div class="tap-guide">TAP!</div>
+                </div>
+                <div class="shape-counter" id="bake-tap-count">0 / 5</div>
+            </div>
+
+            <div id="bake-step-3" class="bake-step hidden">
+                <div class="step-header">
+                    <p class="bake-step-num">STEP 3 / 3</p>
+                    <p class="bake-step-title">BAKE</p>
+                </div>
+                <div class="bake-oven-rich">
+                    <div class="oven-window">
+                        <div id="bake-bread-color" class="bake-bread-color"></div>
+                        <div class="oven-glow"></div>
+                    </div>
+                </div>
+                <div class="bake-timer-wrap-rich">
+                    <div class="bake-timer-track">
+                        <div class="bake-timer-zone"></div>
+                        <div id="bake-timer-needle" class="bake-timer-needle"></div>
+                    </div>
+                    <div class="bake-timer-labels">
+                        <span>UNDER</span><span>PERFECT</span><span>BURN</span>
+                    </div>
+                </div>
+                <button class="fire-btn-rich" id="bake-fire-btn" onclick="bakePan.fire()">
+                    <i class="fa-solid fa-fire"></i> TAKE OUT!
+                </button>
+            </div>
+
+            <div id="bake-result" class="bake-result-rich hidden">
+                <div class="result-header">
+                    <p id="bake-result-label" class="result-title"></p>
+                    <div id="bake-result-score" class="result-stars"></div>
+                </div>
+                
+                <div class="result-preview">
+                    <div id="bake-result-bread" class="result-bread-circle"></div>
+                </div>
+                
+                <p id="bake-result-msg" class="result-msg"></p>
+
+                <div class="result-reward-card" id="bake-reward-info">
+                    <div class="reward-title">COIN REWARD</div>
+                    <div class="reward-value"><i class="fa-solid fa-coins"></i> +<span id="bake-reward-coins">0</span></div>
+                </div>
+
+                <div class="result-actions">
+                    <button class="secondary-btn rich-btn-outline" onclick="bakePan.showSetup()">
+                        <i class="fa-solid fa-rotate-left"></i> PLAY AGAIN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Input Modal -->
+    <div id="game-input-modal" class="modal-overlay hidden" style="z-index: 2000;">
+        <div class="search-box" style="max-width: 320px; text-align: center; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <div style="background: var(--primary-color); color: white; padding: 20px; font-weight: 800; letter-spacing: 1px;">SAVE RECORD</div>
+            <div class="modal-body" style="padding: 24px;">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 8px; text-align: left; font-weight: 700;">PLAYER NAME</label>
+                    <input type="text" id="game-input-player" placeholder="あなたのなまえ" style="text-align: center; border-radius: 12px; border: 1px solid var(--border-color); padding: 12px; width: 100%;">
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 8px; text-align: left; font-weight: 700;">BREAD NAME</label>
+                    <input type="text" id="game-input-bread" placeholder="パンのなまえ" style="text-align: center; border-radius: 12px; border: 1px solid var(--border-color); padding: 12px; width: 100%;">
+                </div>
+                <button class="primary-btn" onclick="bakePan.confirmGameSave()" style="width: 100%; padding: 16px; border-radius: 12px;">SAVE TO HISTORY</button>
+                <button class="secondary-btn" onclick="document.getElementById('game-input-modal').classList.add('hidden')" style="width: 100%; margin-top: 12px; font-size: 0.7rem; border: none; background: transparent; color: var(--text-muted);">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        (function() {
+            function updateClock() {
+                var el = document.getElementById('phone-time');
+                if (!el) return;
+                var now = new Date();
+                var h = now.getHours().toString().padStart(2, '0');
+                var m = now.getMinutes().toString().padStart(2, '0');
+                el.textContent = h + ':' + m;
+            }
+            updateClock();
+            setInterval(updateClock, 15000);
+        })();
+    </script>
+    </div><!-- /#device-frame -->
+</body>
+
+</html>
