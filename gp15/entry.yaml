@@ -1,0 +1,13 @@
+app_title: "panbiyori."
+summary: "panbiyori. は、食べたパンをサクッと記録できる、パン好きのための\"パン手帳\"アプリ。写真と店名を入れるだけで記録が完成し、パンの写真は丸くステッカー化されてコレクションに。行きたいお店はWISH LISTで、巡ったルートはMEGURIで振り返れます。待ち時間に楽しめる豆知識やミニゲームも搭載。"
+app_url: "https://github.com/sayu-gp/15th-chaosgallery"
+developer:
+  name: "sayu"
+  title: "Service Designer"
+article:
+  title: "パンが好きすぎて、\"自分がいちばん欲しい\"記録アプリを作った話"
+  body_file: "article.md"
+publication:
+  web_ok: true
+  credits_note: ""
+  reviewers: []
