@@ -4,6 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Content Security Policy
+         読み込み元を自サイトと利用中の CDN に限定し、データ送信先も地図検索 API だけに絞る。
+         ・'unsafe-inline' … HTML 内の onclick 属性を使っているため現状は必須
+         ・'unsafe-eval'   … heic2any（HEIC変換）が内部で eval を使うため必須
+         インライン注入自体は防げないので、XSS 対策の本体は script.js の esc() によるエスケープ。 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com;
+        font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+        img-src 'self' data: blob: https:;
+        connect-src 'self' blob: https://nominatim.openstreetmap.org;
+        worker-src 'self' blob:;
+        object-src 'none';
+        base-uri 'self';
+        form-action 'none'">
     <title>panbiyori. | パン好きのための相棒アプリ</title>
     <meta name="description" content="パン好きのための相棒アプリ">
     <link rel="stylesheet" href="style.css">
@@ -14,12 +30,20 @@
         href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap"
         rel="stylesheet">
     <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
+        crossorigin="anonymous" referrerpolicy="no-referrer">
     <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- HEIC Conversion Library (Better compatibility) -->
-    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.3/dist/heic2any.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.3/dist/heic2any.min.js"
+        integrity="sha384-HnVmUMsADw3oUexi52NxKTCTSTuDhHuCN5xFr4nyJ9p9Xdp0IpJBLQf1KAEO2FZo"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -225,7 +249,7 @@
                             <div style="display: flex; gap: 8px;">
                                 <input type="text" id="record-address" placeholder="住所やGoogleマップのリンク">
                                 <button class="secondary-btn mini" style="width: auto; padding: 0 12px;"
-                                    onclick="window.open('https://www.google.com/maps', '_blank')"><i
+                                    onclick="window.open('https://www.google.com/maps', '_blank', 'noopener')"><i
                                         class="fa-solid fa-location-dot"></i></button>
                             </div>
                         </div>
@@ -293,13 +317,13 @@
                         安全に別ウィンドウで表示して連携できます。
                     </p>
                     <button class="primary-btn" style="width: auto; padding: 14px 40px; margin: 0 auto;"
-                        onclick="window.open('https://www.google.com/maps', '_blank')">
+                        onclick="window.open('https://www.google.com/maps', '_blank', 'noopener')">
                         <i class="fa-solid fa-up-right-from-square" style="margin-right: 8px;"></i> Googleマップを開く
                     </button>
                     <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F5F5F5;">
                         <p style="font-size: 0.6rem; color: var(--text-muted); margin-bottom: 16px;">※
                             Googleのセキュリティ保護により、地図の全機能は別ウィンドウでの表示となります</p>
-                        <a href="https://www.google.com/maps/d/" target="_blank"
+                        <a href="https://www.google.com/maps/d/" target="_blank" rel="noopener noreferrer"
                             style="font-size: 0.7rem; color: var(--primary-color); text-decoration: none; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
                             <i class="fa-solid fa-map-location-dot"></i> 自分のマイマップを編集する
                         </a>
@@ -356,7 +380,7 @@
                         <label class="group-label">MEGURI TITLE / ツアー名</label>
                         <input type="text" id="tour-title-input" placeholder="例：代々木上原パン巡り">
                     </div>
-                    <button id="tour-save-btn" class="primary-btn" onclick="try { app.completeMeguriSave(); } catch(e) { console.error(e); alert(e.message); }" style="margin-top: 16px; width: 100%;">REGISTRATION</button>
+                    <button id="tour-save-btn" class="primary-btn" onclick="app.completeMeguriSave()" style="margin-top: 16px; width: 100%;">REGISTRATION</button>
                 </div>
             </div>
         </div>
