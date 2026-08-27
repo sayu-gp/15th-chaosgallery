@@ -1,5 +1,51 @@
 // panbiyori. Core Logic
 
+// HTML エスケープ
+// innerHTML にユーザー入力（店名・パン名・コメント等）を差し込む箇所では必ずこれを通す。
+// 通さないと、入力値に含まれる <script> や onerror 属性がそのまま実行される（XSS）。
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[c]));
+}
+
+// インライン onclick に埋め込む ID 用のホワイトリスト
+// アプリが生成した ID（数値 / custom_<timestamp>）以外の文字を落とし、
+// 属性値からの JS 文字列エスケープを防ぐ。
+function escId(value) {
+    return String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+// localStorage への保存（容量超過をユーザーに伝える）
+// 画像を Base64 で持つため、記録が増えると 5MB 前後の上限に達する。
+function saveToStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (e) {
+        console.error('localStorage write failed:', key, e);
+        if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+            alert('保存できる容量がいっぱいです。古い記録を削除してから、もう一度お試しください。');
+        } else {
+            alert('保存に失敗しました。ブラウザの設定でデータの保存が許可されているかご確認ください。');
+        }
+        return false;
+    }
+}
+
+// ゲームのスコア等の小さな値。書き込みに失敗しても致命的ではないので通知しない。
+function saveQuiet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (e) {
+        console.warn('localStorage write skipped:', key, e);
+    }
+}
+
 const app = {
     // Mock Data
     bakeries: [
@@ -188,7 +234,7 @@ const app = {
         const el = document.getElementById(id);
         if (!el) return;
         if (dataUrl) {
-            el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">`;
+            el.innerHTML = `<img src="${esc(dataUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">`;
         } else {
             el.innerHTML = `${defaultIcon}<p style="font-size: 0.6rem; color: #AAA; margin-top: 4px;">PHOTO</p>`;
         }
@@ -282,18 +328,18 @@ const app = {
         const card = document.createElement('div');
         card.className = 'bakery-card';
         card.innerHTML = `
-            <img src="${bakery.img}" class="bakery-img" alt="${bakery.name}">
+            <img src="${esc(bakery.img)}" class="bakery-img" alt="${esc(bakery.name)}">
             <div class="bakery-info">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                    <h3>${bakery.name}</h3>
-                    <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark" 
-                       style="color: var(--primary-color); cursor: pointer; font-size: 1.2rem;" 
-                       onclick="app.toggleSave(${bakery.id}, event)"></i>
+                    <h3>${esc(bakery.name)}</h3>
+                    <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark"
+                       style="color: var(--primary-color); cursor: pointer; font-size: 1.2rem;"
+                       onclick="app.toggleSave(${Number(bakery.id)}, event)"></i>
                 </div>
-                <p class="bakery-tagline">${bakery.tagline}</p>
+                <p class="bakery-tagline">${esc(bakery.tagline)}</p>
                 <div class="bakery-tags">
-                    <span class="tag">${bakery.distance}</span>
-                    ${bakery.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                    <span class="tag">${esc(bakery.distance)}</span>
+                    ${bakery.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
                 </div>
             </div>
         `;
@@ -338,16 +384,17 @@ const app = {
                     const levelLabel = { MUST: '絶対行きたい！', SOON: '近々行く', MAYBE: 'いつか行きたい' }[b.level || 'SOON'];
                     const levelClass = (b.level || 'SOON').toLowerCase();
                     
+                    const sid = escId(b.id);
                     card.innerHTML = `
                         <div class="bakery-info">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                <h3 onclick="${!this.state.selectionMode ? `app.showCustomStoreForm('${b.id}')` : ''}" style="cursor: pointer;">${b.name} ${!this.state.selectionMode ? '<i class="fa-solid fa-pen-to-square" style="font-size: 0.8rem; color: var(--text-muted);"></i>' : ''}</h3>
-                                ${!this.state.selectionMode ? `<i class="fa-solid fa-trash" style="color: var(--text-muted); cursor: pointer; font-size: 1rem;" onclick="app.deleteCustomStore('${b.id}', event)"></i>` : ''}
+                                <h3 onclick="${!this.state.selectionMode ? `app.showCustomStoreForm('${sid}')` : ''}" style="cursor: pointer;">${esc(b.name)} ${!this.state.selectionMode ? '<i class="fa-solid fa-pen-to-square" style="font-size: 0.8rem; color: var(--text-muted);"></i>' : ''}</h3>
+                                ${!this.state.selectionMode ? `<i class="fa-solid fa-trash" style="color: var(--text-muted); cursor: pointer; font-size: 1rem;" onclick="app.deleteCustomStore('${sid}', event)"></i>` : ''}
                             </div>
-                            <p class="bakery-tagline" style="color: var(--primary-color); font-weight: 700;">WANT: ${b.targetBread || '未定'}</p>
+                            <p class="bakery-tagline" style="color: var(--primary-color); font-weight: 700;">WANT: ${esc(b.targetBread || '未定')}</p>
                             <div class="bakery-tags">
-                                <span class="tag level-tag-${levelClass}">${levelLabel}</span>
-                                <span class="tag"><i class="fa-solid fa-location-dot"></i> ${b.area || 'エリア未設定'}</span>
+                                <span class="tag level-tag-${esc(levelClass)}">${esc(levelLabel)}</span>
+                                <span class="tag"><i class="fa-solid fa-location-dot"></i> ${esc(b.area || 'エリア未設定')}</span>
                             </div>
                         </div>
                     `;
@@ -355,13 +402,13 @@ const app = {
                     card.innerHTML = `
                         <div class="bakery-info">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                <h3>${b.name}</h3>
-                                ${!this.state.selectionMode ? `<i class="fa-solid fa-bookmark" style="color: var(--primary-color); cursor: pointer; font-size: 1.2rem;" onclick="app.toggleSave(${b.id}, event)"></i>` : ''}
+                                <h3>${esc(b.name)}</h3>
+                                ${!this.state.selectionMode ? `<i class="fa-solid fa-bookmark" style="color: var(--primary-color); cursor: pointer; font-size: 1.2rem;" onclick="app.toggleSave(${Number(b.id)}, event)"></i>` : ''}
                             </div>
-                            <p class="bakery-tagline">${b.tagline}</p>
+                            <p class="bakery-tagline">${esc(b.tagline)}</p>
                             <div class="bakery-tags">
-                                <span class="tag">${b.distance}</span>
-                                ${b.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                                <span class="tag">${esc(b.distance)}</span>
+                                ${b.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
                             </div>
                         </div>
                     `;
@@ -392,7 +439,7 @@ const app = {
         } else {
             this.state.savedIds.push(id);
         }
-        localStorage.setItem('panbiyori_saved', JSON.stringify(this.state.savedIds));
+        saveToStorage('panbiyori_saved', this.state.savedIds);
         this.renderMyList();
         if (this.state.currentView === 'explore') this.renderExplore();
     },
@@ -457,7 +504,7 @@ const app = {
             customSaved.unshift(newStore);
         }
 
-        localStorage.setItem('panbiyori_custom_saved', JSON.stringify(customSaved));
+        saveToStorage('panbiyori_custom_saved', customSaved);
 
         document.getElementById('custom-store-modal').classList.add('hidden');
         this.renderMyList();
@@ -469,7 +516,7 @@ const app = {
 
         let customSaved = JSON.parse(localStorage.getItem('panbiyori_custom_saved')) || [];
         const filtered = customSaved.filter(s => s.id !== id);
-        localStorage.setItem('panbiyori_custom_saved', JSON.stringify(filtered));
+        saveToStorage('panbiyori_custom_saved', filtered);
         this.renderMyList();
     },
 
@@ -495,14 +542,19 @@ const app = {
         }
 
         // 3. Nominatim API で検索
+        // ここまでで座標を抽出できなかった場合のみ、住所や場所名を外部サービスに送信する。
+        // 緯度経度や @lat,lng を含む地図 URL が入力された場合は 1. で処理が終わり、通信は発生しない。
+        // 送信されるのはこの検索文字列だけで、写真やコメント等の記録は端末外に出ない。
         try {
             // 日本国内を優先し、検索精度を高めるため詳細なパラメータを追加
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp&limit=1&addressdetails=1`;
             const resp = await fetch(url, {
-                headers: { 
-                    'Accept-Language': 'ja,en',
-                    'User-Agent': 'panbiyori-app' // User-Agent is recommended by Nominatim
-                }
+                // User-Agent はブラウザの fetch では禁止ヘッダのため指定できない（指定してもブラウザが破棄する）。
+                // Nominatim の利用規約はアプリの識別に User-Agent または Referer を求めているので、
+                // ブラウザ側から唯一制御できる Referer をオリジンのみに絞って送る
+                // （パスやクエリは送らず、どのアプリからのアクセスかだけが伝わる）。
+                headers: { 'Accept-Language': 'ja,en' },
+                referrerPolicy: 'origin'
             });
             const data = await resp.json();
             if (data && data.length > 0) {
@@ -620,18 +672,18 @@ const app = {
             <div class="map-sheet-handle"></div>
             <button class="map-sheet-close" onclick="app.hideMapSheet()"><i class="fa-solid fa-xmark"></i></button>
             <div class="map-sheet-body">
-                <img src="${bakery.img}" class="map-sheet-img" alt="${bakery.name}">
+                <img src="${esc(bakery.img)}" class="map-sheet-img" alt="${esc(bakery.name)}">
                 <div class="map-sheet-info">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
-                        <h3>${bakery.name}</h3>
+                        <h3>${esc(bakery.name)}</h3>
                         <i class="${isSaved ? 'fa-solid' : 'fa-regular'} fa-bookmark"
                            style="color:var(--primary-color);cursor:pointer;font-size:1.1rem;padding:2px 0 0 8px;"
-                           onclick="app.toggleSave(${bakery.id},event);app.showMapSheet(${bakery.id})"></i>
+                           onclick="app.toggleSave(${Number(bakery.id)},event);app.showMapSheet(${Number(bakery.id)})"></i>
                     </div>
-                    <p class="bakery-tagline">${bakery.tagline}</p>
+                    <p class="bakery-tagline">${esc(bakery.tagline)}</p>
                     <div class="bakery-tags">
-                        <span class="tag">${bakery.distance}</span>
-                        ${bakery.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        <span class="tag">${esc(bakery.distance)}</span>
+                        ${bakery.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
                     </div>
                 </div>
             </div>
@@ -699,38 +751,39 @@ const app = {
             this.state.tempBreadImages[entryId] = { img: data.img, sticker: data.sticker };
         }
 
+        const eid = escId(entryId);
         entryDiv.innerHTML = `
             <button class="remove-bread-btn" onclick="this.parentElement.remove()"><i class="fa-solid fa-trash-can"></i></button>
             <div class="form-group" style="text-align: center;">
-                <div id="bread-image-${entryId}-preview" class="image-upload-preview mini">
-                    ${data && data.img ? `<img src="${data.img}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : `<i class="fa-solid fa-camera"></i><p style="font-size: 0.6rem; color: #AAA; margin-top: 4px;">BREAD PHOTO</p>`}
+                <div id="bread-image-${eid}-preview" class="image-upload-preview mini">
+                    ${data && data.img ? `<img src="${esc(data.img)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : `<i class="fa-solid fa-camera"></i><p style="font-size: 0.6rem; color: #AAA; margin-top: 4px;">BREAD PHOTO</p>`}
                 </div>
-                <input type="file" id="bread-image-${entryId}-input" accept="image/*" style="display: none;" onchange="app.handleBreadImage(event, '${entryId}')">
+                <input type="file" id="bread-image-${eid}-input" accept="image/*" style="display: none;" onchange="app.handleBreadImage(event, '${eid}')">
             </div>
             <div class="form-group">
                 <label class="group-label">BREAD NAME</label>
-                <input type="text" class="bread-name-input" placeholder="e.g. Croissant" value="${data ? data.name : ''}">
+                <input type="text" class="bread-name-input" placeholder="e.g. Croissant" value="${esc(data ? data.name : '')}">
             </div>
             <div class="form-group">
                 <label class="group-label">TYPES</label>
                 <div class="record-tags-input">
                     ${['ベーグル', 'クロワッサン', '食パン', 'ハード系', '菓子パン', '惣菜パン', '高加水'].map(tag => `
-                        <button class="input-tag-btn ${this.state.currentRecordTags[entryId].includes(tag) ? 'active' : ''}" 
-                                onclick="app.toggleBreadTag('${entryId}', '${tag}', this)">${tag}</button>
+                        <button class="input-tag-btn ${this.state.currentRecordTags[entryId].includes(tag) ? 'active' : ''}"
+                                onclick="app.toggleBreadTag('${eid}', '${esc(tag)}', this)">${esc(tag)}</button>
                     `).join('')}
                 </div>
-                <input type="text" class="custom-tags-input" placeholder="その他のタイプ（カンマ区切り）" style="margin-top: 8px; font-size: 0.7rem;" value="${data ? (data.customTags || '') : ''}">
+                <input type="text" class="custom-tags-input" placeholder="その他のタイプ（カンマ区切り）" style="margin-top: 8px; font-size: 0.7rem;" value="${esc(data ? (data.customTags || '') : '')}">
             </div>
             <div class="form-group">
                 <label class="group-label">PRICE (OPTIONAL)</label>
-                <input type="number" class="bread-price-input" placeholder="¥ 0" value="${data ? data.price || '' : ''}">
+                <input type="number" class="bread-price-input" placeholder="¥ 0" value="${esc(data ? data.price || '' : '')}">
             </div>
             <div class="form-group">
                 <label class="group-label">RATING</label>
-                <div class="rating-pan-container" id="rating-${entryId}">
+                <div class="rating-pan-container" id="rating-${eid}">
                     ${[1, 2, 3, 4, 5].map(v => `
-                        <i class="fa-solid fa-bread-slice rating-pan ${v <= this.state.currentRecordRating[entryId] ? 'active' : ''}" 
-                           data-val="${v}" onclick="app.setBreadRating('${entryId}', ${v})"></i>
+                        <i class="fa-solid fa-bread-slice rating-pan ${v <= this.state.currentRecordRating[entryId] ? 'active' : ''}"
+                           data-val="${v}" onclick="app.setBreadRating('${eid}', ${v})"></i>
                     `).join('')}
                 </div>
             </div>
@@ -839,7 +892,11 @@ const app = {
                 this.state.records.unshift({ id: Date.now(), ...recordData });
             }
 
-            localStorage.setItem('panbiyori_records', JSON.stringify(this.state.records));
+            // 保存に失敗した場合はフォームを閉じず、入力内容を残す
+            if (!saveToStorage('panbiyori_records', this.state.records)) {
+                if (!id) this.state.records.shift();
+                return;
+            }
 
             // Switch to notebook view if not already there
             this.switchView('notebook');
@@ -899,7 +956,7 @@ const app = {
     deleteRecord(id) {
         if (!confirm('Are you sure you want to delete this entry?')) return;
         this.state.records = this.state.records.filter(r => r.id !== id);
-        localStorage.setItem('panbiyori_records', JSON.stringify(this.state.records));
+        saveToStorage('panbiyori_records', this.state.records);
         this.renderRecords();
     },
 
@@ -925,17 +982,17 @@ const app = {
 
                 card.innerHTML = `
                     <div class="note-img-container" style="background: var(--cream-color);">
-                        ${r.bakery.img ? `<img src="${r.bakery.img}" class="note-img">` : `<div class="note-img" style="display: flex; align-items: center; justify-content: center; color: #DDD;"><i class="fa-solid fa-store" style="font-size: 3rem;"></i></div>`}
+                        ${r.bakery.img ? `<img src="${esc(r.bakery.img)}" class="note-img">` : `<div class="note-img" style="display: flex; align-items: center; justify-content: center; color: #DDD;"><i class="fa-solid fa-store" style="font-size: 3rem;"></i></div>`}
                     </div>
                     <div class="note-content">
                         <div class="note-header">
-                            <span>${r.bakery.date || ''} ${r.bakery.visitTime ? `<i class="fa-regular fa-clock" style="margin-left: 6px;"></i> ${r.bakery.visitTime}` : ''}</span>
+                            <span>${esc(r.bakery.date || '')} ${r.bakery.visitTime ? `<i class="fa-regular fa-clock" style="margin-left: 6px;"></i> ${esc(r.bakery.visitTime)}` : ''}</span>
                             <span>${breadCount} BREADS</span>
                         </div>
-                        <h3>${r.bakery.name || 'Unknown Bakery'}</h3>
-                        <p class="note-comment" style="margin-top: 8px;">${r.comment || ''}</p>
+                        <h3>${esc(r.bakery.name || 'Unknown Bakery')}</h3>
+                        <p class="note-comment" style="margin-top: 8px;">${esc(r.comment || '')}</p>
                         <div class="bakery-tags" style="margin-top: 12px;">
-                            ${tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                            ${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
                         </div>
                         ${r.breads && r.breads.some(b => b.price) ? `
                         <div style="margin-top: 12px; font-size: 0.75rem; font-weight: 700; color: var(--primary-color);">
@@ -944,8 +1001,8 @@ const app = {
                     </div>
                     ${!this.state.selectionMode ? `
                     <div class="note-actions">
-                        <button class="action-btn" onclick="app.showRecordForm(${r.id})"><i class="fa-solid fa-pen-to-square"></i> EDIT</button>
-                        <button class="action-btn" style="color: #C0392B;" onclick="app.deleteRecord(${r.id})"><i class="fa-solid fa-trash"></i></button>
+                        <button class="action-btn" onclick="app.showRecordForm(${Number(r.id)})"><i class="fa-solid fa-pen-to-square"></i> EDIT</button>
+                        <button class="action-btn" style="color: #C0392B;" onclick="app.deleteRecord(${Number(r.id)})"><i class="fa-solid fa-trash"></i></button>
                     </div>` : ''}
                 `;
                 container.appendChild(card);
@@ -1283,7 +1340,7 @@ const app = {
                 this.state.meguriFilter = meguri.type;
             }
             
-            localStorage.setItem('panbiyori_meguris', JSON.stringify(this.state.meguris));
+            saveToStorage('panbiyori_meguris', this.state.meguris);
 
             const modal = document.getElementById('tour-modal');
             if (modal) modal.classList.add('hidden');
@@ -1333,12 +1390,12 @@ const app = {
         filteredMeguris.forEach(m => {
             const card = document.createElement('div');
             card.className = 'meguri-card';
-            const mid = String(m.id);
+            const mid = escId(m.id);
             card.innerHTML = `
                 <div class="meguri-thumb" onclick="app.showMeguriTimeline('${mid}')"><i class="fa-solid fa-map-location-dot"></i></div>
                 <div class="meguri-info" onclick="app.showMeguriTimeline('${mid}')">
-                    <div class="meguri-title">${m.title}</div>
-                    <div class="meguri-meta">${m.date} • ${m.recordIds.length} spots</div>
+                    <div class="meguri-title">${esc(m.title)}</div>
+                    <div class="meguri-meta">${esc(m.date)} • ${m.recordIds.length} spots</div>
                 </div>
                 <div class="meguri-actions">
                     <i class="fa-solid fa-pen-to-square" onclick="app.editMeguri('${mid}', event)"></i>
@@ -1358,7 +1415,7 @@ const app = {
         modal.classList.remove('hidden');
         confirmBtn.onclick = () => {
             this.state.meguris = this.state.meguris.filter(m => String(m.id) !== String(id));
-            localStorage.setItem('panbiyori_meguris', JSON.stringify(this.state.meguris));
+            saveToStorage('panbiyori_meguris', this.state.meguris);
             modal.classList.add('hidden');
             this.renderMeguriList();
         };
@@ -1444,19 +1501,19 @@ const app = {
                 item.innerHTML = `
                     <div class="timeline-dot"></div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="timeline-time">${s.plannedTime}</span>
-                        ${meguri.type === 'plan' ? `<i class="fa-solid fa-pen" style="font-size: 0.6rem; color: var(--text-muted); cursor: pointer;" onclick="app.updatePlannedTime('${meguri.id}', '${sid}')"></i>` : ''}
+                        <span class="timeline-time">${esc(s.plannedTime)}</span>
+                        ${meguri.type === 'plan' ? `<i class="fa-solid fa-pen" style="font-size: 0.6rem; color: var(--text-muted); cursor: pointer;" onclick="app.updatePlannedTime('${escId(meguri.id)}', '${escId(sid)}')"></i>` : ''}
                     </div>
                     <div class="timeline-content">
-                        <div class="timeline-shop">${s.bakery.name}</div>
+                        <div class="timeline-shop">${esc(s.bakery.name)}</div>
                         <div class="timeline-breads">
-                            ${s.breads && s.breads.length > 0 ? 
-                                s.breads.map(b => `<span>${b.name}${b.price ? ` (¥${b.price})` : ''}</span>`).join(' / ') : 
-                                (meguri.type === 'plan' ? (s.bakery.targetBread || 'WANT TO EAT...') : '')
+                            ${s.breads && s.breads.length > 0 ?
+                                s.breads.map(b => `<span>${esc(b.name)}${b.price ? ` (¥${esc(b.price)})` : ''}</span>`).join(' / ') :
+                                (meguri.type === 'plan' ? esc(s.bakery.targetBread || 'WANT TO EAT...') : '')
                             }
                         </div>
                         ${subtotal > 0 ? `<div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-color); margin-top: 6px;">SUBTOTAL: ¥ ${subtotal}</div>` : ''}
-                        ${s.bakery.img ? `<img src="${s.bakery.img}" class="timeline-img">` : ''}
+                        ${s.bakery.img ? `<img src="${esc(s.bakery.img)}" class="timeline-img">` : ''}
                     </div>
                 `;
                 timeline.appendChild(item);
@@ -1506,15 +1563,20 @@ const app = {
         if (!meguri.plannedTimes) meguri.plannedTimes = {};
         meguri.plannedTimes[shopId] = time;
 
-        localStorage.setItem('panbiyori_meguris', JSON.stringify(this.state.meguris));
+        saveToStorage('panbiyori_meguris', this.state.meguris);
         document.getElementById('time-modal').classList.add('hidden');
         this.showMeguriTimeline(meguriId);
     },
 };
 
 // Initialize
+// エラーはコンソールにのみ出力する（alert でファイルパスや内部情報を表示しない）
 window.addEventListener('error', (e) => {
-    alert('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+    console.error('JS Error:', e.message, 'at', e.filename + ':' + e.lineno);
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled rejection:', e.reason);
 });
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1533,7 +1595,7 @@ window.addEventListener('DOMContentLoaded', () => {
             });
         }
     } catch (err) {
-        alert('Init failed: ' + err.message);
+        console.error('Init failed:', err);
     }
 });
 
@@ -2029,7 +2091,7 @@ const runPan = {
         // Save High Score
         if (this.score > this.highScore) {
             this.highScore = this.score;
-            localStorage.setItem('panbiyori_run_high', this.highScore);
+            saveQuiet('panbiyori_run_high', this.highScore);
             document.getElementById('run-high-score').textContent = this.highScore;
         }
 
@@ -2037,7 +2099,7 @@ const runPan = {
         const reward = Math.floor(this.score / 10);
         if (reward > 0) {
             const currentCoins = parseInt(localStorage.getItem('panbiyori_game_coins')) || 0;
-            localStorage.setItem('panbiyori_game_coins', currentCoins + reward);
+            saveQuiet('panbiyori_game_coins', currentCoins + reward);
             if (typeof bakePan !== 'undefined' && bakePan.loadProgress) bakePan.loadProgress();
         }
 
@@ -2421,7 +2483,7 @@ const bakePan = {
         const reward = Math.round(this.config[this.level].reward * d.bonus);
         if (reward > 0) {
             this.coins += reward;
-            localStorage.setItem('panbiyori_game_coins', this.coins);
+            saveQuiet('panbiyori_game_coins', this.coins);
             document.getElementById('bake-reward-info').style.display = 'block';
             document.getElementById('bake-reward-coins').textContent = reward;
         } else {
